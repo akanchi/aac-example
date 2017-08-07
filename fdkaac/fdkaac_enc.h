@@ -2,7 +2,7 @@
 #define FDKAAC_ENC_H
 
 extern "C" {
-	#include "fdk-aac/aacenc_lib.h"
+	#include "include/fdk-aac/aacenc_lib.h"
 }
 
 class aacenc_t {
