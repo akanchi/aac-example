@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 using namespace std;
 
 #include "fdkaac_dec.h"
@@ -42,15 +43,9 @@ public:
 	unsigned char adts_buffer_fullness_5_to_10 			: 	6;
 };
 
-#define SAFE_FREE(p) \
-    if (p) { \
-        delete[] p; \
-        p = NULL; \
-    } \
-    (void)0
-
 int main(int argc, char const *argv[])
 {
+    cout << "start" << endl;
 	ifstream in_aac("hello.aac", ios::binary);
 	void *wav = NULL;
 	AacDecoder fdkaac_dec;
@@ -60,14 +55,16 @@ int main(int argc, char const *argv[])
 	if (nbPcm == 0) {
 		nbPcm = 50 * 1024;
 	}
-	char *pPcm = new char[nbPcm];
+
+	std::vector<char> pcm_buf(nbPcm, 0);
+
 
 	in_aac.seekg(0, ios::end); 
 	int nbAacSize = in_aac.tellg();
     in_aac.seekg (0, ios::beg); 
 
-    char *pAac = new char[nbAacSize]; 
-    in_aac.read(pAac, nbAacSize);
+    std::vector<char> aac_buf(nbAacSize, 0);
+    in_aac.read(&aac_buf[0], nbAacSize);
     int pos = 0;
 
     while (1) {
@@ -75,7 +72,7 @@ int main(int argc, char const *argv[])
     		break;
     	}
 
-    	adts_header_t *adts = (adts_header_t *)(pAac + pos);
+    	adts_header_t *adts = (adts_header_t *)(&aac_buf[0] + pos);
     	
     	if (adts->syncword_0_to_8 != 0xff || adts->syncword_9_to_12 != 0xf) {
 			break;
@@ -88,7 +85,7 @@ int main(int argc, char const *argv[])
 		}
 
     	int leftSize = aac_frame_size;
-    	int ret = fdkaac_dec.aacdec_fill(pAac + pos, aac_frame_size, &leftSize);
+    	int ret = fdkaac_dec.aacdec_fill(&aac_buf[0] + pos, aac_frame_size, &leftSize);
     	pos += aac_frame_size;
 
     	if (ret != 0) {
@@ -100,7 +97,7 @@ int main(int argc, char const *argv[])
 		}
 
 		int validSize = 0;
-		ret = fdkaac_dec.aacdec_decode_frame(pPcm, nbPcm, &validSize);
+		ret = fdkaac_dec.aacdec_decode_frame(&pcm_buf[0], pcm_buf.size(), &validSize);
 
 		if (ret == AAC_DEC_NOT_ENOUGH_BITS) {
 			continue;
@@ -121,11 +118,9 @@ int main(int argc, char const *argv[])
 			}
 		}
 
-		wav_write_data(wav, (unsigned char*)pPcm, validSize);
+		wav_write_data(wav, (unsigned char*)&pcm_buf[0], validSize);
     }
 
-    SAFE_FREE(pPcm);
-    SAFE_FREE(pAac);
     in_aac.close();
     if (wav) {
     	wav_write_close(wav);

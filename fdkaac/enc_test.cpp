@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <vector>
 using namespace std;
 
 #include "fdkaac_enc.h"
@@ -7,13 +8,6 @@ using namespace std;
 extern "C" {
 	#include "wavreader.h"
 }
-
-#define SAFE_FREE(p) \
-    if (p) { \
-        delete[] p; \
-        p = NULL; \
-    } \
-    (void)0
 
 int main(int argc, char const *argv[])
 {
@@ -47,31 +41,30 @@ int main(int argc, char const *argv[])
 	cout << "sample_rate: " << sample_rate << endl; 
 
 	int pcmSize = channels * 2 * fdkaac_enc.aacenc_frame_size();
-	unsigned char *pPcm = new unsigned char[pcmSize];
+	std::vector<char> pcm_buf(pcmSize, 0);
 
 	int nbSamples = fdkaac_enc.aacenc_frame_size();
 	
 	int nbAac = fdkaac_enc.aacenc_max_output_buffer_size();
-	char *pAac = new char[nbAac];
+	std::vector<char> aac_buf(nbAac, 0);
 
 	int err = 0;
 	while (1) {
-		int aacSize = nbAac;
-		int read = wav_read_data(wav, pPcm, pcmSize);
-		if ((err = fdkaac_enc.aacenc_encode((char *)pPcm, read, nbSamples, pAac, aacSize)) != AACENC_OK) {
+		int aacSize = aac_buf.size();
+		int read = wav_read_data(wav, (unsigned char *)&pcm_buf[0], pcm_buf.size());
+
+        if (read <= 0)
+            break;
+
+		if ((err = fdkaac_enc.aacenc_encode(&pcm_buf[0], read, nbSamples, &aac_buf[0], aacSize)) != AACENC_OK) {
 			cout << "error code:" << err << endl;
 		}
 
-		if (read <= 0)
-			break;
-
 		if (aacSize > 0) {
-			out_aac.write(pAac, aacSize);
+			out_aac.write(aac_buf.data(), aacSize);
 		}
 	}
 
-	SAFE_FREE(pPcm);
-	SAFE_FREE(pAac);
 	wav_read_close(wav);
 	out_aac.close();
 	cout << "end" << endl;
