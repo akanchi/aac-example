@@ -2,7 +2,7 @@
 #define FDKAAC_DEC_H
 
 extern "C"{
-	#include "fdk-aac/aacdecoder_lib.h"
+	#include "include/fdk-aac/aacdecoder_lib.h"
 }
 
 class aacdec_t

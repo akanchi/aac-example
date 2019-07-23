@@ -1,0 +1,8 @@
+thirdparty/
+*.aac
+*.wav
+trunk/include/
+trunk/lib/
+*.o
+enc_test
+dec_test
